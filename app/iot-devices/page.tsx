@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Droplet, Thermometer, Waves, Activity, Gauge } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Droplet, Thermometer, Waves, Activity, Gauge, HardDrive } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -10,133 +10,128 @@ import {
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-type Device = {
-  id: string;
-  name: string;
-  status: "active" | "inactive" | "maintenance";
-  lastReading: string;
-  metrics: {
-    ph: number;
-    tds: string;
-    turbidity: string;
-    temp: string;
-    odour: string;
-  };
-  data: {
-    time: string;
-    ph: number;
-    turbidity: number;
-    temp: number;
-  }[];
+// -------- TYPES --------
+type DeviceMetrics = {
+  ph: number;
+  tds: string;
+  turbidity: string;
+  temp: string;
+  odour: string;
 };
 
-const devices: Device[] = [
+type DeviceDataPoint = {
+  time: string;
+  ph: number;
+  turbidity: number;
+  temp: number;
+};
+
+type Device = {
+  id: string; // e.g., "Majuli-1"
+  status: "active" | "inactive" | "maintenance";
+  lastReading: string;
+  metrics: DeviceMetrics;
+  data: DeviceDataPoint[];
+};
+
+type Location = {
+  id: string; // e.g., "majuli-assam"
+  name: string; // e.g., "Majuli, Assam"
+  devices: Device[];
+};
+
+// -------- DATA GENERATION HELPERS --------
+/** Generates slightly randomized metrics for a device */
+const generateMetrics = (base: { ph: number; tds: number; turbidity: number; temp: number; odour: number }): DeviceMetrics => ({
+  ph: parseFloat((base.ph + (Math.random() - 0.5) * 0.4).toFixed(1)),
+  tds: `${Math.round(base.tds + (Math.random() - 0.5) * 50)} ppm`,
+  turbidity: `${(base.turbidity + (Math.random() - 0.5) * 0.5).toFixed(1)} NTU`,
+  temp: `${(base.temp + (Math.random() - 0.5) * 1.5).toFixed(1)}°C`,
+  odour: `${Math.min(10, Math.max(0, Math.round(base.odour + (Math.random() - 0.5) * 2)))}/10`,
+});
+
+/** Generates slightly randomized time-series data for charts */
+const generateChartData = (base: { ph: number; turbidity: number; temp: number }): DeviceDataPoint[] => {
+  return Array.from({ length: 7 }, (_, i) => ({
+    time: `16:0${i}`,
+    ph: parseFloat((base.ph + (Math.random() - 0.5) * 1.2).toFixed(1)),
+    turbidity: parseFloat(Math.max(0.5, base.turbidity + (Math.random() - 0.5) * 1.5).toFixed(1)),
+    temp: parseFloat((base.temp + (Math.random() - 0.5) * 2).toFixed(1)),
+  }));
+};
+
+// -------- MOCK DATA --------
+const locations: Location[] = [
   {
-    id: "WQ-004",
+    id: "pasighat-arunachal",
     name: "Pasighat, Arunachal Pradesh",
-    status: "active",
-    lastReading: "15/01/2024, 16:02:00",
-    metrics: {
-      ph: 7.4,
-      tds: "320 ppm",
-      turbidity: "1.2 NTU",
-      temp: "22.8°C",
-      odour: "1/10",
-    },
-    data: [
-      { time: "15:42", ph: 7.5, turbidity: 1.2, temp: 23 },
-      { time: "15:43", ph: 7.8, turbidity: 2.0, temp: 24 },
-      { time: "15:44", ph: 7.3, turbidity: 1.4, temp: 22.5 },
-      { time: "15:45", ph: 8.0, turbidity: 2.5, temp: 25 },
-      { time: "15:46", ph: 7.6, turbidity: 1.6, temp: 23.5 },
+    devices: [
+      { id: "Pasighat-1", status: "active", lastReading: "19/09/2025, 16:08:00", metrics: generateMetrics({ ph: 7.4, tds: 320, turbidity: 1.2, temp: 22.8, odour: 1 }), data: generateChartData({ ph: 7.4, turbidity: 1.2, temp: 22.8 }) },
+      { id: "Pasighat-2", status: "active", lastReading: "19/09/2025, 16:09:00", metrics: generateMetrics({ ph: 7.5, tds: 335, turbidity: 1.0, temp: 23.1, odour: 1 }), data: generateChartData({ ph: 7.5, turbidity: 1.0, temp: 23.1 }) },
     ],
   },
   {
-    id: "WQ-001",
+    id: "aizawl-mizoram",
     name: "Aizawl, Mizoram",
-    status: "active",
-    lastReading: "15/01/2024, 15:58:00",
-    metrics: {
-      ph: 7.2,
-      tds: "280 ppm",
-      turbidity: "1.5 NTU",
-      temp: "21.5°C",
-      odour: "2/10",
-    },
-    data: [
-      { time: "15:42", ph: 6.9, turbidity: 1.1, temp: 20.5 },
-      { time: "15:43", ph: 7.3, turbidity: 2.0, temp: 22 },
-      { time: "15:44", ph: 7.1, turbidity: 1.5, temp: 21 },
-      { time: "15:45", ph: 7.6, turbidity: 2.2, temp: 23 },
-      { time: "15:46", ph: 7.0, turbidity: 1.4, temp: 21.5 },
+    devices: [
+      { id: "Aizawl-1", status: "active", lastReading: "19/09/2025, 16:10:00", metrics: generateMetrics({ ph: 7.2, tds: 280, turbidity: 1.5, temp: 21.5, odour: 2 }), data: generateChartData({ ph: 7.2, turbidity: 1.5, temp: 21.5 }) },
+      { id: "Aizawl-2", status: "inactive", lastReading: "18/09/2025, 11:30:00", metrics: generateMetrics({ ph: 6.9, tds: 295, turbidity: 1.8, temp: 21.0, odour: 2 }), data: generateChartData({ ph: 6.9, turbidity: 1.8, temp: 21.0 }) },
+      { id: "Aizawl-3", status: "active", lastReading: "19/09/2025, 16:05:00", metrics: generateMetrics({ ph: 7.3, tds: 270, turbidity: 1.4, temp: 21.8, odour: 1 }), data: generateChartData({ ph: 7.3, turbidity: 1.4, temp: 21.8 }) },
     ],
   },
   {
-    id: "WQ-002",
+    id: "majuli-assam",
     name: "Majuli, Assam",
-    status: "active",
-    lastReading: "15/01/2024, 15:55:00",
-    metrics: {
-      ph: 7.6,
-      tds: "300 ppm",
-      turbidity: "1.0 NTU",
-      temp: "23.5°C",
-      odour: "0/10",
-    },
-    data: [
-      { time: "15:42", ph: 7.0, turbidity: 0.8, temp: 22 },
-      { time: "15:43", ph: 7.8, turbidity: 1.6, temp: 23.5 },
-      { time: "15:44", ph: 7.5, turbidity: 1.2, temp: 22.8 },
-      { time: "15:45", ph: 8.2, turbidity: 1.9, temp: 24 },
-      { time: "15:46", ph: 7.3, turbidity: 1.0, temp: 23 },
+    devices: [
+      { id: "Majuli-1", status: "active", lastReading: "19/09/2025, 16:11:00", metrics: generateMetrics({ ph: 7.6, tds: 300, turbidity: 1.0, temp: 23.5, odour: 0 }), data: generateChartData({ ph: 7.6, turbidity: 1.0, temp: 23.5 }) },
+      { id: "Majuli-2", status: "maintenance", lastReading: "15/09/2025, 09:00:00", metrics: generateMetrics({ ph: 7.8, tds: 310, turbidity: 1.1, temp: 23.0, odour: 0 }), data: generateChartData({ ph: 7.8, turbidity: 1.1, temp: 23.0 }) },
     ],
   },
   {
-    id: "WQ-003",
+    id: "churachandpur-manipur",
     name: "Churachandpur, Manipur",
-    status: "inactive",
-    lastReading: "15/01/2024, 15:50:00",
-    metrics: {
-      ph: 6.8,
-      tds: "400 ppm",
-      turbidity: "2.5 NTU",
-      temp: "20.8°C",
-      odour: "3/10",
-    },
-    data: [
-      { time: "15:42", ph: 6.5, turbidity: 2.0, temp: 20 },
-      { time: "15:43", ph: 6.9, turbidity: 2.6, temp: 21 },
-      { time: "15:44", ph: 6.7, turbidity: 2.3, temp: 20.5 },
-      { time: "15:45", ph: 7.1, turbidity: 2.8, temp: 21.2 },
-      { time: "15:46", ph: 6.6, turbidity: 2.4, temp: 20.6 },
+    devices: [
+      { id: "Churachandpur-1", status: "inactive", lastReading: "17/09/2025, 18:20:00", metrics: generateMetrics({ ph: 6.8, tds: 400, turbidity: 2.5, temp: 20.8, odour: 3 }), data: generateChartData({ ph: 6.8, turbidity: 2.5, temp: 20.8 }) },
+      { id: "Churachandpur-2", status: "active", lastReading: "19/09/2025, 16:02:00", metrics: generateMetrics({ ph: 7.0, tds: 380, turbidity: 2.2, temp: 21.2, odour: 2 }), data: generateChartData({ ph: 7.0, turbidity: 2.2, temp: 21.2 }) },
     ],
   },
   {
-    id: "WQ-005",
-    name: "Tura, Meghalaya →",
-    status: "maintenance",
-    lastReading: "15/01/2024, 15:45:00",
-    metrics: {
-      ph: 7.0,
-      tds: "350 ppm",
-      turbidity: "1.8 NTU",
-      temp: "22.0°C",
-      odour: "1/10",
-    },
-    data: [
-      { time: "15:42", ph: 6.8, turbidity: 1.2, temp: 21 },
-      { time: "15:43", ph: 7.4, turbidity: 2.1, temp: 22.2 },
-      { time: "15:44", ph: 7.1, turbidity: 1.7, temp: 22.5 },
-      { time: "15:45", ph: 7.7, turbidity: 2.3, temp: 23 },
-      { time: "15:46", ph: 7.0, turbidity: 1.5, temp: 22 },
+    id: "tura-meghalaya",
+    name: "Tura, Meghalaya",
+    devices: [
+      { id: "Tura-1", status: "active", lastReading: "19/09/2025, 16:12:00", metrics: generateMetrics({ ph: 7.0, tds: 350, turbidity: 1.8, temp: 22.0, odour: 1 }), data: generateChartData({ ph: 7.0, turbidity: 1.8, temp: 22.0 }) },
     ],
   },
 ];
 
+
 export default function IoTDevicesPage() {
-  const [selected, setSelected] = useState<Device>(devices[0]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<Location>(locations[0]);
+  const [selectedDevice, setSelectedDevice] = useState<Device>(locations[0].devices[0]);
+
+  const handleLocationSelect = (location: Location) => {
+    setSelectedLocation(location);
+    // When a new location is selected, default to its first device
+    setSelectedDevice(location.devices[0]);
+  };
+
+  const filteredLocations = useMemo(() => {
+    if (!searchQuery) return locations;
+    return locations.filter(loc =>
+      loc.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
@@ -151,47 +146,69 @@ export default function IoTDevicesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Device List */}
+        {/* Location & Device List */}
         <div className="bg-white rounded-xl shadow p-4 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Device List</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Locations</h2>
           <input
-            placeholder="Search by ID or location..."
+            placeholder="Search by location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-lg text-sm placeholder-gray-600 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white"
-
           />
 
-      <div className="space-y-2">
-  {devices.map((d) => (
-    <div
-      key={d.id}
-      onClick={() => setSelected(d)}
-      className={`p-3 rounded-lg cursor-pointer border flex justify-between items-center transition ${
-        selected.id === d.id
-          ? "bg-blue-50 border-blue-200"
-          : "hover:bg-black-100"
-      }`}
-    >
-      <div>
-        {/* Device Name */}
-        <div className="font-semibold text-gray-900">{d.name}</div>
-        {/* Device ID */}
-        <div className="text-sm text-gray-700">{d.id}</div>
-      </div>
-      <span
-        className={`text-xs px-2 py-1 rounded-full font-medium ${
-          d.status === "active"
-            ? "bg-green-100 text-green-700"
-            : d.status === "inactive"
-            ? "bg-red-100 text-red-700"
-            : "bg-yellow-100 text-yellow-700"
-        }`}
-      >
-        {d.status}
-      </span>
-    </div>
-  ))}
-</div>
+          <div className="space-y-3">
+            {filteredLocations.map((loc) => (
+              <div key={loc.id}>
+                {/* Location Item */}
+                <div
+                  onClick={() => handleLocationSelect(loc)}
+                  className={`p-3 rounded-lg cursor-pointer border flex justify-between items-center transition ${
+                    selectedLocation.id === loc.id
+                      ? "bg-blue-100 border-blue-300"
+                      : "hover:bg-gray-100 border-gray-200"
+                  }`}
+                >
+                  <span className="font-semibold text-gray-900">{loc.name}</span>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded-full">
+                    {loc.devices.length}
+                  </span>
+                </div>
 
+                {/* Devices list for the selected location */}
+                {selectedLocation.id === loc.id && (
+                  <div className="pl-4 pt-2 space-y-2 border-l-2 border-blue-200 ml-4">
+                    {loc.devices.map((d) => (
+                      <div
+                        key={d.id}
+                        onClick={() => setSelectedDevice(d)}
+                        className={`p-2 rounded-md cursor-pointer border flex justify-between items-center transition ${
+                          selectedDevice.id === d.id
+                            ? "bg-blue-50 border-blue-200 shadow-sm"
+                            : "hover:bg-gray-50 border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                            <HardDrive className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-800">{d.id}</span>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            d.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : d.status === "inactive"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {d.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Device Details + Charts */}
@@ -201,22 +218,22 @@ export default function IoTDevicesPage() {
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">
-                  {selected.name}
+                  {selectedLocation.name} - Sensor <span className="text-blue-600">{selectedDevice.id}</span>
                 </h2>
                 <p className="text-sm text-gray-500">
-                  Last reading: {selected.lastReading}
+                  Last reading: {selectedDevice.lastReading}
                 </p>
               </div>
               <span
                 className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  selected.status === "active"
+                  selectedDevice.status === "active"
                     ? "bg-green-100 text-green-700"
-                    : selected.status === "inactive"
+                    : selectedDevice.status === "inactive"
                     ? "bg-red-100 text-red-700"
                     : "bg-yellow-100 text-yellow-700"
                 }`}
               >
-                {selected.status}
+                {selectedDevice.status}
               </span>
             </div>
 
@@ -224,23 +241,23 @@ export default function IoTDevicesPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 text-gray-800 font-medium">
                 <Droplet className="w-5 h-5 text-blue-500 bg-blue-100 p-1 rounded-full" />
-                {selected.metrics.ph} pH
+                pH: {selectedDevice.metrics.ph}
               </div>
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 text-gray-800 font-medium">
                 <Activity className="w-5 h-5 text-purple-500 bg-purple-100 p-1 rounded-full" />
-                {selected.metrics.tds} TDS
+                TDS: {selectedDevice.metrics.tds}
               </div>
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 text-gray-800 font-medium">
                 <Waves className="w-5 h-5 text-cyan-500 bg-cyan-100 p-1 rounded-full" />
-                {selected.metrics.turbidity} Turbidity
+                Turbidity: {selectedDevice.metrics.turbidity}
               </div>
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 text-gray-800 font-medium">
                 <Thermometer className="w-5 h-5 text-orange-500 bg-orange-100 p-1 rounded-full" />
-                {selected.metrics.temp}
+                Temp: {selectedDevice.metrics.temp}
               </div>
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 text-gray-800 font-medium">
                 <Gauge className="w-5 h-5 text-pink-500 bg-pink-100 p-1 rounded-full" />
-                {selected.metrics.odour} Odour
+                Odour: {selectedDevice.metrics.odour}
               </div>
             </div>
           </div>
@@ -251,56 +268,48 @@ export default function IoTDevicesPage() {
               Real-time Sensor Data
             </h2>
 
-            {/* pH & Turbidity */}
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={selected.data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="time" stroke="#6b7280" />
-                  <YAxis yAxisId="left" stroke="#3b82f6" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
-                  <Tooltip />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="ph"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    isAnimationActive={true}
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="turbidity"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    isAnimationActive={true}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Temperature */}
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={selected.data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="time" stroke="#6b7280" />
-                  <YAxis stroke="#f59e0b" />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="temp"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    isAnimationActive={true}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Combined Chart with Legend */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <div className="h-80 cursor-pointer">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={selectedDevice.data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="time" stroke="#6b7280" />
+                      <YAxis yAxisId="left" stroke="#3b82f6" label={{ value: 'pH', angle: -90, position: 'insideLeft', fill: '#3b82f6' }} />
+                      <YAxis yAxisId="right" orientation="right" stroke="#10b981" label={{ value: 'Turbidity (NTU)', angle: -90, position: 'insideRight', fill: '#10b981' }} />
+                      <YAxis yAxisId="temp" orientation="right" stroke="#f59e0b" hide={true} />
+                      <Tooltip />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="ph" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="pH Level" />
+                      <Line yAxisId="right" type="monotone" dataKey="turbidity" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Turbidity" />
+                      <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Temperature (°C)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl bg-white">
+                <DialogHeader>
+                  <DialogTitle>Real-time Sensor Data for {selectedDevice.id}</DialogTitle>
+                </DialogHeader>
+                <div className="h-[600px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={selectedDevice.data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="time" stroke="#6b7280" />
+                      <YAxis yAxisId="left" stroke="#3b82f6" label={{ value: 'pH', angle: -90, position: 'insideLeft', fill: '#3b82f6' }} />
+                      <YAxis yAxisId="right" orientation="right" stroke="#10b981" label={{ value: 'Turbidity (NTU)', angle: -90, position: 'insideRight', fill: '#10b981' }} />
+                       <YAxis yAxisId="temp" orientation="right" stroke="#f59e0b" hide={true} />
+                      <Tooltip />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="ph" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="pH Level" />
+                      <Line yAxisId="right" type="monotone" dataKey="turbidity" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} name="Turbidity" />
+                       <Line yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Temperature (°C)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

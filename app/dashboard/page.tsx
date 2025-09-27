@@ -1,38 +1,18 @@
+// @/pages/DashboardPage.tsx or @/app/dashboard/page.tsx
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  AlertAPI,
   AlertData,
-  HealthReportAPI,
-  HealthReportData,
-  DeviceStatusAPI,
   DeviceStatusData,
-  WaterQualityAPI,
-  WaterQualityData,
 } from "@/entities/all";
-
-// Ensure WaterQualityData has 'temperature' property
-// If not, extend the type here:
-type WaterQualityDataWithTemperature = WaterQualityData & {
-  temperature?: number;
-  water_level?: number;
-  sensor_name?: string;
-  device_name?: string;
-  location?: string;
-  area?: string;
-  device_id?: string | number;
-  id?: string | number;
-  carbon_pct?: number;
-  pH?: number;
-  tds?: number;
-  turbidity?: number;
-  o2_gas?: number;
-  timestamp?: string;
-};
-
-type AlertDataWithSeverity = AlertData & { severity?: string; title?: string };
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -68,7 +48,6 @@ import {
   Activity,
   MapPin,
   Clock,
-  
 } from "lucide-react";
 
 /* ----------------- helpers ----------------- */
@@ -93,7 +72,7 @@ function percentForGauge(label: string, value: number) {
 }
 
 function formatValue(val: number | undefined, decimals = 2) {
-  return Number.isFinite(val) ? Number(val).toFixed(decimals) : "-";
+  return Number.isFinite(val as number) ? Number(val).toFixed(decimals) : "-";
 }
 
 /* ----------------- small components ----------------- */
@@ -111,10 +90,10 @@ function StatusCard({
   trend?: string;
 }) {
   return (
-    <Card className="p-5 rounded-2xl shadow-sm border bg-white flex flex-col gap-3">
+    <Card className="p-5 rounded-2xl custom-soft-shadow bg-white flex flex-col gap-3 group animate-scale-on-hover">
       <div className="flex items-center gap-3">
         <div
-          className={`h-12 w-12 flex items-center justify-center rounded-full ${color} text-white`}
+          className={`h-12 w-12 flex items-center justify-center rounded-full ${color} text-white animate-blink-on-hover`}
         >
           <Icon className="h-6 w-6" />
         </div>
@@ -143,8 +122,8 @@ function GaugeCard({
   const displayValue = formatValue(value);
 
   return (
-    <Card className="flex flex-col items-center justify-center p-4 shadow-sm border rounded-2xl bg-white">
-      <div className="w-24 h-24 mb-2">
+    <Card className="flex flex-col items-center justify-center p-4 custom-soft-shadow rounded-2xl bg-white h-full">
+      <div className="w-full h-auto aspect-square mb-2">
         <CircularProgressbar
           value={pct}
           text={displayValue}
@@ -153,6 +132,7 @@ function GaugeCard({
             textColor: "#111827",
             trailColor: "#f3f4f6",
             textSize: "12px",
+            pathTransitionDuration: 1.5,
           })}
         />
       </div>
@@ -164,73 +144,231 @@ function GaugeCard({
 
 /* ----------------- main dashboard ----------------- */
 export default function DashboardPage() {
-  const [waterData, setWaterData] = useState<WaterQualityDataWithTemperature[]>([]);
-  const [alerts, setAlerts] = useState<AlertData[]>([]);
-  const [healthReports, setHealthReports] = useState<HealthReportData[]>([]);
-  const [sensors, setSensors] = useState<DeviceStatusData[]>([]);
 
+  const [waterData, setWaterData] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<AlertData[]>([]);
+  const [sensors, setSensors] = useState<DeviceStatusData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("All Areas");
-  const [selectedSensor, setSelectedSensor] = useState("All Sensors");
+  const [selectedDevice, setSelectedDevice] = useState("All Devices");
+  const [deviceOptions, setDeviceOptions] = useState<string[]>(["All Devices"]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [a, h, d, w] = await Promise.all([
-        AlertAPI.list("desc"),
-        HealthReportAPI.list("desc"),
-        DeviceStatusAPI.list(),
-        WaterQualityAPI.list(),
-      ]);
-      setAlerts(a || []);
-      setHealthReports(h || []);
-      setSensors(d || []);
-      setWaterData(
-        (w || []).map((reading: any, idx: number) => ({
-          id: reading.id ?? idx,
-          device_id: reading.device_id ?? "",
-          pH: reading.pH,
-          tds: reading.tds,
-          turbidity: reading.turbidity,
-          carbon_pct: reading.carbon_pct,
-          temperature: reading.temperature,
-          water_level: reading.water_level,
-          o2_gas: reading.o2_gas,
-          location: reading.location || reading.area,
-          sensor_name: reading.sensor_name || reading.device_name,
-          timestamp: reading.timestamp ?? "",
-        }))
-      );
-    } catch (err) {
-      console.error("Failed to load dashboard data", err);
-    }
+  useEffect(() => {
+    const mockAlerts: AlertData[] = [
+      {
+        id: "1",
+        title: "High Turbidity Detected",
+        location: "Majuli, Assam",
+        timestamp: new Date().toISOString(),
+        severity: "high",
+      },
+      {
+        id: "2",
+        title: "Low pH Level",
+        location: "Churachandpur, Manipur",
+        timestamp: new Date().toISOString(),
+        severity: "medium",
+      },
+      {
+        id: "3",
+        title: "Sensor Offline",
+        location: "Tura, Meghalaya",
+        timestamp: new Date().toISOString(),
+        severity: "low",
+      },
+      {
+        id: "4",
+        title: "Unusual Temperature Fluctuation",
+        location: "Aizawl, Mizoram",
+        timestamp: new Date().toISOString(),
+        severity: "medium",
+      },
+      {
+        id: "5",
+        title: "High TDS Detected",
+        location: "Majuli, Assam",
+        timestamp: new Date().toISOString(),
+        severity: "high",
+      },
+    ];
+    setAlerts(mockAlerts);
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const mockSensors: DeviceStatusData[] = [
+      {
+        id: "1",
+        device_id: "D-MAJULI-1",
+        name: "Majuli Sensor 1",
+        location: "Majuli, Assam",
+        status: "online",
+      },
+      {
+        id: "2",
+        device_id: "D-CHURACHANDPUR-1",
+        name: "Churachandpur Sensor 1",
+        location: "Churachandpur, Manipur",
+        status: "offline",
+      },
+      {
+        id: "3",
+        device_id: "D-TURA-1",
+        name: "Tura Sensor 1",
+        location: "Tura, Meghalaya",
+        status: "online",
+      },
+      {
+        id: "4",
+        device_id: "D-AIZAWL-1",
+        name: "Aizawl Sensor 1",
+        location: "Aizawl, Mizoram",
+        status: "maintenance",
+      },
+      {
+        id: "5",
+        device_id: "D-MAJULI-2",
+        name: "Majuli Sensor 2",
+        location: "Majuli, Assam",
+        status: "online",
+      },
+    ];
+    setSensors(mockSensors);
+  }, []);
+
+  // Define your project areas and their base values
+  const areaOptions = useMemo(() => [
+    { key: "majuli", label: "Majuli, Assam" },
+    { key: "churachandpur", label: "Churachandpur, Manipur" },
+    { key: "tura", label: "Tura, Meghalaya" },
+    { key: "aizawl", label: "Aizawl, Mizoram" },
+  ], []);
+
+  const areaDataBases = useMemo(() => ({
+    "majuli": {
+      pH: 7.2,
+      tds: 400,
+      turbidity: 2,
+      temperature: 25,
+      carbon_pct: 30,
+      water_level: 60,
+    },
+    "churachandpur": {
+      pH: 6.8,
+      tds: 350,
+      turbidity: 3,
+      temperature: 22,
+      carbon_pct: 40,
+      water_level: 55,
+    },
+    "tura": {
+      pH: 7.0,
+      tds: 420,
+      turbidity: 2.5,
+      temperature: 24,
+      carbon_pct: 35,
+      water_level: 65,
+    },
+    "aizawl": {
+      pH: 7.1,
+      tds: 390,
+      turbidity: 2.2,
+      temperature: 23,
+      carbon_pct: 38,
+      water_level: 62,
+    },
+  }), []);
+
+  const defaultDataBase = useMemo(() => ({
+    pH: 7.0,
+    tds: 400,
+    turbidity: 2.5,
+    temperature: 24,
+    carbon_pct: 35,
+    water_level: 60,
+  }), []);
+
+  useEffect(() => {
+    const mockWaterData = areaOptions.flatMap(area => {
+      const base = areaDataBases[area.key] || defaultDataBase;
+      const deviceCount = Math.floor(Math.random() * 4) + 2;
+      const data = [];
+      for (let i = 0; i < deviceCount; i++) {
+        const deviceId = `D-${area.key.toUpperCase()}-${i + 1}`;
+        data.push({
+          id: `${area.key}-${i}`,
+          device_id: deviceId,
+          sensor_name: `Device ${i + 1}`,
+          location: area.label,
+          ...base,
+          pH: base.pH + (Math.random() - 0.5) * 1,
+          tds: base.tds + (Math.random() - 0.5) * 100,
+          turbidity: base.turbidity + (Math.random() - 0.5) * 2,
+          temperature: base.temperature + (Math.random() - 0.5) * 5,
+          carbon_pct: base.carbon_pct + (Math.random() - 0.5) * 4,
+          water_level: base.water_level + (Math.random() - 0.5) * 20,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return data;
+    });
+    setWaterData(mockWaterData);
+  }, [areaOptions, areaDataBases, defaultDataBase]);
+
+
+
+  // Update device options based on selected area
+  useEffect(() => {
+    if (selectedArea === "All Areas") {
+      setDeviceOptions(["All Devices"]);
+      // The old line that caused the reset is removed here.
+      // setSelectedDevice("All Devices");
+    } else {
+      const areaLower = areaOptions.find(a => a.key === selectedArea)?.label.toLowerCase();
+      const devicesInArea = Array.from(new Set(
+        waterData
+          .filter(d => (d.location || "").toLowerCase().includes(areaLower || ""))
+          .map(d => d.device_id)
+      ));
+      setDeviceOptions(["All Devices", ...devicesInArea]);
+      // The old line that caused the reset is removed here.
+      // setSelectedDevice("All Devices");
+    }
+  }, [selectedArea, waterData, areaOptions]);
+
+  // Handlers for dropdowns
+  const handleAreaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newArea = event.target.value;
+    setSelectedArea(newArea);
+    setSearchQuery(""); // Clear search when area changes
+  };
+
+  const handleDeviceChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newDevice = event.target.value;
+    setSelectedDevice(newDevice);
+    setSearchQuery(""); // Clear search when device changes
+  };
 
   const activeSensors = sensors.filter((s) => s.status === "online").length;
   const pendingAlerts = alerts.length;
-  const recentReports = healthReports.length;
   const riskLevel = pendingAlerts > 2 ? "High" : "Low";
 
-  const areaOptions = useMemo(
-    () => ["All Areas", ...new Set(waterData.map((w: any) => w.location || ""))],
-    [waterData]
-  );
-  const sensorOptions = useMemo(
-    () => ["All Sensors", ...new Set(sensors.map((s: any) => s.name || s.id || ""))],
-    [sensors]
-  );
+  // Chart Data (areas used for area dropdown)
+  const diseaseRiskData = useMemo(() => {
+    // Generate risk data based on waterData
+    return areaOptions.map(area => {
+      const areaData = waterData.filter(d => (d.location || "").toLowerCase().includes(area.key));
+      const avgTDS = areaData.reduce((sum, d) => sum + (d.tds || 0), 0) / areaData.length;
+      const avgTurbidity = areaData.reduce((sum, d) => sum + (d.turbidity || 0), 0) / areaData.length;
 
-  const firstWater = waterData[0];
-
-  const diseaseRiskData = [
-    { name: "Majuli, Assam", Cholera: 30, Typhoid: 20, Diarrhea: 15 },
-    { name: "Churachandpur, Manipur", Cholera: 20, Typhoid: 25, Diarrhea: 10 },
-    { name: "Tura, Meghalaya", Cholera: 15, Typhoid: 10, Diarrhea: 5 },
-    { name: "Aizawl, Mizoram", Cholera: 25, Typhoid: 30, Diarrhea: 20 },
-  ];
+      // Simple heuristic for risk calculation
+      return {
+        name: area.label,
+        Cholera: Math.round(avgTDS / 20),
+        Typhoid: Math.round(avgTurbidity * 3),
+        Diarrhea: Math.round((avgTDS / 50) + (avgTurbidity * 1.5)),
+      };
+    });
+  }, [waterData, areaOptions]);
 
   const trendData = [
     { day: "Mon", risk: 2 },
@@ -242,8 +380,99 @@ export default function DashboardPage() {
     { day: "Sun", risk: 5 },
   ];
 
+  // sensors to show in the Sensor Status list, filtered by selectedArea and searchQuery
+  const displayedSensors = useMemo(() => {
+    let list = Array.isArray(sensors) ? sensors.slice() : [];
+
+    // filter by selected area (partial, case-insensitive)
+    if (selectedArea && selectedArea !== "All Areas") {
+      const areaLower = areaOptions.find(a => a.key === selectedArea)?.label.toLowerCase() || selectedArea.toLowerCase();
+      list = list.filter((s: any) => {
+        const loc =
+          (s.location?.name ||
+            s.location?.village ||
+            s.area ||
+            // some sensor objects might store location as a string
+            (typeof s.location === "string" ? s.location : "") ||
+            "")
+            .toString()
+            .toLowerCase();
+        return loc.includes(areaLower);
+      });
+    }
+
+    // filter by search query (matches name, device id, or location fields)
+    if (searchQuery && searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((s: any) => {
+        const name = (s.name || s.device_name || "").toString().toLowerCase();
+        const id = (s.device_id || s.id || "").toString().toLowerCase();
+        const loc =
+          (s.location?.name ||
+            s.location?.village ||
+            s.area ||
+            (typeof s.location === "string" ? s.location : "") ||
+            "")
+            .toString()
+            .toLowerCase();
+        return name.includes(q) || id.includes(q) || loc.includes(q);
+      });
+    }
+
+    return list;
+  }, [sensors, selectedArea, searchQuery, areaOptions]);
+
+
+  const filteredAlerts = useMemo(() => {
+    let filtered = alerts;
+
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (a: any) =>
+          a.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (typeof a.location === "string"
+            ? a.location.toLowerCase().includes(searchQuery.toLowerCase())
+            : (a.location?.name || a.location?.village || "")
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+      );
+    }
+
+    return filtered;
+  }, [alerts, searchQuery]);
+
+  const filteredWaterData = useMemo(() => {
+    let data = waterData;
+
+    // Filter by area
+    if (selectedArea !== "All Areas") {
+      const areaLower = areaOptions.find(a => a.key === selectedArea)?.label.toLowerCase() || selectedArea.toLowerCase();
+      data = data.filter((d: any) =>
+        (d.location || "").toLowerCase().includes(areaLower)
+      );
+    }
+
+    // Filter by device if one is selected
+    if (selectedDevice !== "All Devices") {
+      data = data.filter((d) => d.device_id === selectedDevice);
+    }
+
+    // Filter by search query (device name, sensor name, OR location/area)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      data = data.filter((d: any) =>
+        (d.sensor_name || d.device_name || "").toLowerCase().includes(q) ||
+        (d.location || d.area || "").toLowerCase().includes(q)
+      );
+    }
+
+    return data;
+  }, [waterData, selectedArea, selectedDevice, searchQuery, areaOptions]);
+
+  const firstWater = filteredWaterData[0];
+
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gradient-flow min-h-screen">
       <div className="px-4 lg:px-6 space-y-8">
         {/* Header */}
         <div>
@@ -273,7 +502,7 @@ export default function DashboardPage() {
           />
           <StatusCard
             title="Reports Today"
-            value={recentReports}
+            value={5}
             icon={FileText}
             color="bg-green-500"
             trend="↑ 12% increase"
@@ -288,7 +517,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Live Water Quality */}
-        <Card className="rounded-2xl shadow-md">
+        <Card className="rounded-2xl custom-soft-shadow">
           <CardHeader className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <Droplet className="text-blue-500 h-5 w-5" />
@@ -303,7 +532,7 @@ export default function DashboardPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <input
                   type="text"
-                  placeholder="Search by area or sensor ID..."
+                  placeholder="Search by area or device..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none"
@@ -313,20 +542,26 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <select
                   value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
+                  onChange={handleAreaChange}
                   className="px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-400"
                 >
+                  <option value="All Areas">All Areas</option>
                   {areaOptions.map((a) => (
-                    <option key={a}>{a}</option>
+                    <option key={a.key} value={a.key}>
+                      {a.label}
+                    </option>
                   ))}
                 </select>
+
                 <select
-                  value={selectedSensor}
-                  onChange={(e) => setSelectedSensor(e.target.value)}
+                  value={selectedDevice}
+                  onChange={handleDeviceChange}
                   className="px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-400"
                 >
-                  {sensorOptions.map((s) => (
-                    <option key={s}>{s}</option>
+                  {deviceOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -334,109 +569,176 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-              <GaugeCard
-                label="pH"
-                value={firstWater?.pH ?? 7.2}
-                unit=""
-                color="#22c55e"
-              />
-              <GaugeCard
-                label="TDS"
-                value={firstWater?.tds ?? 450}
-                unit="mg/L"
-                color="#3b82f6"
-              />
-              <GaugeCard
-                label="Turbidity"
-                value={firstWater?.turbidity ?? 2.3}
-                unit="NTU"
-                color="#f59e0b"
-              />
-              <GaugeCard
-                label="Temperature"
-                value={firstWater?.temperature ?? 24.5}
-                unit="°C"
-                color="#10b981"
-              />
-              <GaugeCard
-                label="Carbon %"
-                value={firstWater?.carbon_pct ?? 2}
-                unit="%"
-                color="#8b5cf6"
-              />
-              <GaugeCard
-                label="Water Level"
-                value={firstWater?.water_level ?? 50}
-                unit="%"
-                color="#06b6d4"
-              />
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-4">
+              {[
+                {
+                  label: "pH",
+                  value: firstWater?.pH ?? 7.2,
+                  unit: "",
+                  color: "#22c55e",
+                },
+                {
+                  label: "TDS",
+                  value: firstWater?.tds ?? 450,
+                  unit: "mg/L",
+                  color: "#3b82f6",
+                },
+                {
+                  label: "Turbidity",
+                  value: firstWater?.turbidity ?? 2.3,
+                  unit: "NTU",
+                  color: "#f59e0b",
+                },
+                {
+                  label: "Temperature",
+                  value: firstWater?.temperature ?? 24.5,
+                  unit: "°C",
+                  color: "#10b981",
+                },
+                {
+                  label: "Carbon %",
+                  value: firstWater?.carbon_pct ?? 2,
+                  unit: "%",
+                  color: "#8b5cf6",
+                },
+                {
+                  label: "Water Level",
+                  value: firstWater?.water_level ?? 50,
+                  unit: "%",
+                  color: "#06b6d4",
+                },
+              ].map((g) => (
+                <div
+                  key={g.label}
+                  className="transition-transform transform rounded-2xl"
+                >
+                  <GaugeCard
+                    label={g.label}
+                    value={g.value}
+                    unit={g.unit}
+                    color={g.color}
+                  />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         {/* Charts + Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 rounded-2xl shadow-md">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Disease Risk Analysis
-              </CardTitle>
-              <p className="text-sm text-gray-500">
-                Predicted outbreak probabilities by location
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-10">
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={diseaseRiskData} barSize={40}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="Cholera" fill="#ef4444" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="Typhoid" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  <Bar
-                    dataKey="Diarrhea"
-                    fill="#10b981"
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Card className="lg:col-span-2 rounded-2xl custom-soft-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Disease Risk Analysis
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">
+                    Predicted outbreak probabilities by location
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-10">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={diseaseRiskData} barSize={40}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="Cholera" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Typhoid" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="Diarrhea"
+                        fill="#10b981"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
 
-              <div>
-                <h3 className="text-md font-semibold mb-3">7-Day Risk Trend</h3>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={trendData}>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <div className="cursor-pointer">
+                        <h3 className="text-md font-semibold mb-3">7-Day Risk Trend</h3>
+                        <ResponsiveContainer width="100%" height={260}>
+                          <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="day" />
+                            <YAxis />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="risk"
+                              stroke="#f59e0b"
+                              strokeWidth={3}
+                              dot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl bg-white animate-pop-in">
+                      <DialogHeader>
+                        <DialogTitle>7-Day Risk Trend</DialogTitle>
+                      </DialogHeader>
+                      <div className="h-[600px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="day" />
+                            <YAxis />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="risk"
+                              stroke="#f59e0b"
+                              strokeWidth={3}
+                              dot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl bg-white animate-pop-in">
+              <DialogHeader>
+                <DialogTitle>Disease Risk Analysis</DialogTitle>
+              </DialogHeader>
+              <div className="h-[600px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={diseaseRiskData} barSize={40}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
+                    <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="risk"
-                      stroke="#f59e0b"
-                      strokeWidth={3}
-                      dot={{ r: 5 }}
+                    <Legend />
+                    <Bar dataKey="Cholera" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="Typhoid" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                    <Bar
+                      dataKey="Diarrhea"
+                      fill="#10b981"
+                      radius={[6, 6, 0, 0]}
                     />
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
+            </DialogContent>
+          </Dialog>
 
           {/* Alerts List */}
-          <Card className="rounded-2xl shadow-md">
+          <Card className="rounded-2xl custom-soft-shadow">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">Recent Alerts</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
-                {(alerts.slice(0, 5) as AlertDataWithSeverity[]).map(
+                {(filteredAlerts.slice(0, 5) as (AlertData & { severity?: string })[]).map(
                   (alert, idx) => (
                     <li
                       key={idx}
-                      className="p-4 border rounded-xl bg-white shadow-sm space-y-2"
+                      className="p-4 border rounded-xl bg-white custom-soft-shadow space-y-2"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -466,7 +768,11 @@ export default function DashboardPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {alert.location?.village || "Unknown"}
+                          {typeof alert.location === "string"
+                            ? alert.location
+                            : alert.location?.village ||
+                              alert.location?.name ||
+                              "Unknown"}
                         </span>
                       </div>
                     </li>
@@ -479,16 +785,16 @@ export default function DashboardPage() {
 
         {/* Sensor + Water Quality */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="rounded-2xl shadow-md">
+          <Card className="rounded-2xl custom-soft-shadow">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">Sensor Status</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
-                {sensors.map((s, idx) => (
+                {displayedSensors.map((s, idx) => (
                   <li
                     key={idx}
-                    className="flex items-center justify-between p-4 border rounded-xl bg-white shadow-sm"
+                    className="flex items-center justify-between p-4 border rounded-xl bg-white custom-soft-shadow"
                   >
                     <div className="flex items-center gap-3">
                       {s.status === "online" ? (
@@ -519,7 +825,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl shadow-md">
+          <Card className="rounded-2xl custom-soft-shadow">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
                 Water Quality Metrics
@@ -527,10 +833,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
-                {waterData.slice(0, 6).map((w, idx) => (
+                {filteredWaterData.slice(0, 6).map((w, idx) => (
                   <li
                     key={idx}
-                    className="flex items-center justify-between p-4 border rounded-xl bg-white shadow-sm"
+                    className="flex items-center justify-between p-4 border rounded-xl bg-white custom-soft-shadow"
                   >
                     <span className="text-sm font-semibold text-gray-800">
                       {w.sensor_name ||

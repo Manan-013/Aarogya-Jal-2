@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  role          Role           @default(ASHA_WORKER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  healthReports HealthReport[]
+}
+
+model Device {
+  id            String         @id @default(cuid())
+  name          String
+  location      String
+  status        DeviceStatus   @default(ONLINE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  alerts        Alert[]
+  waterReadings WaterReading[]
+}
+
+model WaterReading {
+  id               String   @id @default(cuid())
+  deviceId         String
+  timestamp        DateTime @default(now())
+  ph               Float
+  tds              Float
+  turbidity        Float
+  temperature      Float
+  odour            Float?
+  dissolvedOxygen  Float?
+  nitrate          Float?
+  ammonia          Float?
+  chlorine         Float?
+  coliformDetected Boolean?
+  carbonPct        Float?
+  device           Device   @relation(fields: [deviceId], references: [id])
+}
+
+model Alert {
+  id        String        @id @default(cuid())
+  title     String
+  location  String
+  severity  AlertSeverity
+  type      AlertType
+  status    AlertStatus   @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deviceId  String?
+  device    Device?       @relation(fields: [deviceId], references: [id])
+  disease   String?
+  area      String?
+}
+
+model HealthReport {
+  id         String        @id @default(cuid())
+  reporterId String
+  location   String
+  disease    String
+  cases      Int
+  severity   AlertSeverity
+  reportDate DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  reporter   User          @relation(fields: [reporterId], references: [id])
+}
+
+model AIPrediction {
+  id         String        @id @default(cuid())
+  disease    String
+  area       String
+  riskLevel  AlertSeverity
+  confidence Float
+  createdAt  DateTime      @default(now())
+}
+
+enum Role {
+  ASHA_WORKER
+  DOCTOR
+  ADMIN
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertType {
+  WATER_QUALITY
+  DISEASE_OUTBREAK
+  DEVICE_MALFUNCTION
+  PREDICTION
+}
+
+enum AlertStatus {
+  PENDING
+  UNDER_PROCESS
+  RESOLVED
+  FAKE_REPORT
+}

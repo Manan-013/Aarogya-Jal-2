@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // ✅ Export static HTML (creates `out/` folder for Android WebView)
-  output: "export",
+  // ❌ Remove output: "export" so API routes will work
+  // output: "export",
 
   // ✅ Fix for Next.js <Image> when exporting
   images: {

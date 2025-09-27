@@ -1,56 +1,118 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 type Report = {
-  reporter: string;
-  role: string;
+  id: string;
+  reporter: {
+    name: string;
+    role: string;
+  };
   location: string;
   disease: string;
   cases: number;
-  severity: "low" | "medium" | "high" | "critical";
-  date: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  createdAt: string;
+  reportDate: string; // Add reportDate to the Report type
 };
 
-const reports: Report[] = [
-  {
-    reporter: "Dr. Priya Sharma",
-    role: "Doctor",
-    location: "Aizawl, Mizoram",
-    disease: "Diarrhea",
-    cases: 12,
-    severity: "medium",
-    date: "Jan 14, 2024",
-  },
-  {
-    reporter: "ASHA Worker Ravi Kumar",
-    role: "Asha",
-    location: "Majuli, Assam",
-    disease: "Typhoid",
-    cases: 3,
-    severity: "high",
-    date: "Jan 13, 2024",
-  },
-  {
-    reporter: "Dr. Anjali Gupta",
-    role: "Doctor",
-    location: "Churachandpur, Manipur",
-    disease: "Cholera",
-    cases: 2,
-    severity: "critical",
-    date: "Jan 12, 2024",
-  },
-];
-
 export default function ReportsPage() {
+  const [reports, setReports] = useState<Report[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [newReport, setNewReport] = useState({
+    location: "",
+    disease: "",
+    cases: 0,
+    severity: "LOW",
+    reportDate: new Date().toISOString().split('T')[0], // Initialize with today's date
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
 
-  const filteredReports = reports.filter(
+  useEffect(() => {
+    if (token) {
+      fetchReports();
+    }
+  }, [token]);
+
+  
+
+  const fetchReports = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/reports", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      console.log("API Response for reports:", res);
+      if (!res.ok) {
+        throw new Error("Failed to fetch reports");
+      }
+      const data = await res.json();
+      setReports(data);
+    } catch (error) {
+      console.error("Failed to fetch reports:", error);
+      setError("Failed to fetch reports. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewReport((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!token) {
+      setError("You must be logged in to add a report.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...newReport,
+          cases: Number(newReport.cases),
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to add report");
+      }
+      setShowModal(false);
+      fetchReports();
+      setNewReport({
+        location: "",
+        disease: "",
+        cases: 0,
+        severity: "LOW",
+        reportDate: new Date().toISOString().split('T')[0],
+      });
+    } catch (error) {
+      console.error("Failed to add report:", error);
+      setError(`Failed to add report: ${error.message}`);
+    }
+  };
+
+  const filteredReports = reports.slice(0, -6).filter(
     (r) =>
-      r.reporter.toLowerCase().includes(search.toLowerCase()) ||
+      (r.reporter?.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       r.location.toLowerCase().includes(search.toLowerCase()) ||
       r.disease.toLowerCase().includes(search.toLowerCase())
   );
@@ -98,37 +160,47 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredReports.map((r, i) => (
-              <tr
-                key={i}
-                className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
-              >
-                <td className="px-6 py-4">
-                  <div className="font-medium text-gray-900">{r.reporter}</div>
-                  <div className="text-xs text-gray-500">{r.role}</div>
-                </td>
-                <td className="px-6 py-4 text-gray-700">{r.location}</td>
-                <td className="px-6 py-4 text-gray-700">{r.disease}</td>
-                <td className="px-6 py-4 text-gray-700">{r.cases}</td>
-                <td className="px-6 py-4">
-                  <Badge
-                    variant="outline"
-                    className={`capitalize px-2 py-1 text-xs rounded-md font-medium ${
-                      r.severity === "critical"
-                        ? "bg-red-100 text-red-700 border-red-200"
-                        : r.severity === "high"
-                        ? "bg-orange-100 text-orange-700 border-orange-200"
-                        : r.severity === "medium"
-                        ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                        : "bg-green-100 text-green-700 border-green-200"
-                    }`}
-                  >
-                    {r.severity}
-                  </Badge>
-                </td>
-                <td className="px-6 py-4 text-gray-500">{r.date}</td>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="text-center py-6">Loading reports...</td>
               </tr>
-            ))}
+            ) : error ? (
+              <tr>
+                <td colSpan={6} className="text-center py-6 text-red-500">{error}</td>
+              </tr>
+            ) : (
+              filteredReports.map((r) => (
+                <tr
+                  key={r.id}
+                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-gray-900">{r.reporter?.name || 'N/A'}</div>
+                    <div className="text-xs text-gray-500">{r.reporter?.role || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">{r.location}</td>
+                  <td className="px-6 py-4 text-gray-700">{r.disease}</td>
+                  <td className="px-6 py-4 text-gray-700">{r.cases}</td>
+                  <td className="px-6 py-4">
+                    <Badge
+                      variant="outline"
+                      className={`capitalize px-2 py-1 text-xs rounded-md font-medium ${
+                        r.severity === "CRITICAL"
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : r.severity === "HIGH"
+                          ? "bg-orange-100 text-orange-700 border-orange-200"
+                          : r.severity === "MEDIUM"
+                          ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                          : "bg-green-100 text-green-700 border-green-200"
+                      }`}
+                    >
+                      {r.severity.toLowerCase()}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-gray-500">{new Date(r.reportDate).toLocaleDateString()}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -147,24 +219,16 @@ export default function ReportsPage() {
 
             <h2 className="text-lg font-semibold mb-4">Add Manual Report</h2>
 
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Reporter Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
-                  placeholder="Enter reporter name"
-                />
-              </div>
-
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Location
                 </label>
                 <input
                   type="text"
+                  name="location"
+                  value={newReport.location}
+                  onChange={handleInputChange}
                   className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
                   placeholder="Enter location"
                 />
@@ -174,7 +238,12 @@ export default function ReportsPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Disease
                 </label>
-                <select className="w-full mt-1 p-2 border rounded-lg text-sm bg-white">
+                <select
+                  name="disease"
+                  value={newReport.disease}
+                  onChange={handleInputChange}
+                  className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
+                >
                   <option value="">Select disease</option>
                   <option value="Diarrhea">Diarrhea</option>
                   <option value="Typhoid">Typhoid</option>
@@ -190,6 +259,9 @@ export default function ReportsPage() {
                 </label>
                 <input
                   type="number"
+                  name="cases"
+                  value={newReport.cases}
+                  onChange={handleInputChange}
                   className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
                   placeholder="Enter number of cases"
                 />
@@ -199,13 +271,30 @@ export default function ReportsPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Severity
                 </label>
-                <select className="w-full mt-1 p-2 border rounded-lg text-sm bg-white">
-                  <option value="">Select severity</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
+                <select
+                  name="severity"
+                  value={newReport.severity}
+                  onChange={handleInputChange}
+                  className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Report Date
+                </label>
+                <input
+                  type="date"
+                  name="reportDate"
+                  value={newReport.reportDate}
+                  onChange={handleInputChange}
+                  className="w-full mt-1 p-2 border rounded-lg text-sm bg-white"
+                />
               </div>
 
               <button

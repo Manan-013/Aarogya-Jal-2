@@ -1,21 +1,74 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SettingsPage() {
-  const [name, setName] = useState("John Doe");
-  const [email, setEmail] = useState("john.doe@example.com");
+  const { token } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (token) {
+      // Fetch user data
+      const decodedToken = JSON.parse(atob(token.split('.')[1]));
+      setEmail(decodedToken.email || "");
+      // You might want to fetch the name from the database
+      // For now, we'll just use the name from the token if it exists
+      setName(decodedToken.name || "");
+    }
+  }, [token]);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Profile updated!\nName: ${name}\nEmail: ${email}`);
+    const decodedToken = JSON.parse(atob(token.split('.')[1]));
+    try {
+      const res = await fetch(`/api/users/${decodedToken.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update profile");
+      }
+
+      alert("Profile updated successfully!");
+    } catch (error) {
+      alert(`Failed to update profile: ${error.message}`);
+    }
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Password changed!\nCurrent: ${currentPassword}\nNew: ${newPassword}`);
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("jwt_token")}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to change password");
+      }
+
+      alert("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (error) {
+      alert(`Failed to change password: ${error.message}`);
+    }
   };
 
   return (
