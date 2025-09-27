@@ -44,10 +44,10 @@ const navigationItems = [
   { title: "IoT Devices", url : "/iot-devices", icon :  Settings},
   { title: "Reports", url : "/REPORTS-NEW", icon :  FileBarChart},
   { title: "Alerts & Action", url: "/alerts", icon: AlertTriangle },
-  { title: "Upload Data", url: "/upload-data", icon: Upload }, // ✅ fixed here
-  { title: "Setting", url : "/setting", icon :  Settings},
-  { title: "Push Notification", url : "/push-notification", icon :  BellDot},
   { title: "water-forcast", url : "/water-forecast", icon :  TrendingUp},
+  { title: "Upload Data", url: "/upload-data", icon: Upload }, // ✅ fixed here
+  { title: "Push Notification", url : "/push-notification", icon :  BellDot},
+  { title: "Setting", url : "/setting", icon :  Settings},
   // { title: "Water Quality", url: "/waterquality", icon: Droplets },
   // { title: "Health Reports", url: "/healthreports", icon: Heart },
   // { title: "Devices", url: "/devices", icon: Router },
