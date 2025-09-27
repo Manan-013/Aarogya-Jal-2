@@ -12,26 +12,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("AuthProvider: useEffect");
-    // Attempt to load token from localStorage on initial load
-    const storedToken = localStorage.getItem('jwt_token');
-    console.log("AuthProvider: storedToken", storedToken);
-    if (storedToken) {
-      setToken(storedToken);
-    }
+    // Set a mock token for frontend development without a backend
+    const mockToken = 'mock-jwt-token';
+    setToken(mockToken);
+    localStorage.setItem('jwt_token', mockToken);
   }, []);
 
   const login = (jwtToken: string) => {
-    setToken(jwtToken);
-    localStorage.setItem('jwt_token', jwtToken);
+    // Mock login doesn't need to do anything
   };
 
   const logout = () => {
     setToken(null);
     localStorage.removeItem('jwt_token');
   };
-
-  console.log("AuthProvider: rendering with token", token);
 
   const value = useMemo(
     () => ({

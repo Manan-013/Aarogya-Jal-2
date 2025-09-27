@@ -25,7 +25,7 @@
       "@/*": ["./*"],
       "@/app/*": ["./app/*"],
       "@/components/*": ["./components/*"],
-      "@/entities/*": ["./src/entities/*"],
+
       "@/hooks/*": ["./hooks/*"],
       "@/lib/*": ["./lib/*"]
     },

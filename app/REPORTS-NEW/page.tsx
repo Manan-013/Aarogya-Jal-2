@@ -23,51 +23,58 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [newReport, setNewReport] = useState({
+  const [newReport, setNewReport] = useState<{
+    location: string;
+    disease: string;
+    cases: number;
+    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    reportDate: string;
+  }>({
     location: "",
     disease: "",
     cases: 0,
     severity: "LOW",
-    reportDate: new Date().toISOString().split('T')[0], // Initialize with today's date
+    reportDate: new Date().toISOString().split('T')[0],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
   useEffect(() => {
-    if (token) {
-      fetchReports();
-    }
-  }, [token]);
-
-  
-
-  const fetchReports = async () => {
     setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/reports", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-      console.log("API Response for reports:", res);
-      if (!res.ok) {
-        throw new Error("Failed to fetch reports");
-      }
-      const data = await res.json();
-      setReports(data);
-    } catch (error) {
-      console.error("Failed to fetch reports:", error);
-      setError("Failed to fetch reports. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const mockReports: Report[] = [
+      {
+        id: "1",
+        reporter: { name: "Asha Worker 1", role: "ASHA" },
+        location: "Majuli, Assam",
+        disease: "Diarrhea",
+        cases: 5,
+        severity: "MEDIUM",
+        createdAt: new Date().toISOString(),
+        reportDate: new Date().toISOString(),
+      },
+      {
+        id: "2",
+        reporter: { name: "Doctor 1", role: "Doctor" },
+        location: "Churachandpur, Manipur",
+        disease: "Typhoid",
+        cases: 2,
+        severity: "HIGH",
+        createdAt: new Date().toISOString(),
+        reportDate: new Date().toISOString(),
+      },
+    ];
+    setReports(mockReports);
+    setLoading(false);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setNewReport((prev) => ({ ...prev, [name]: value }));
+    if (name === "severity") {
+      setNewReport((prev) => ({ ...prev, severity: value as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" }));
+    } else {
+      setNewReport((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,35 +86,23 @@ export default function ReportsPage() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...newReport,
-          cases: Number(newReport.cases),
-        }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to add report");
-      }
-      setShowModal(false);
-      fetchReports();
-      setNewReport({
-        location: "",
-        disease: "",
-        cases: 0,
-        severity: "LOW",
-        reportDate: new Date().toISOString().split('T')[0],
-      });
-    } catch (error) {
-      console.error("Failed to add report:", error);
-      setError(`Failed to add report: ${error.message}`);
-    }
+    const reportToAdd: Report = {
+      id: (reports.length + 1).toString(),
+      reporter: { name: "Mock User", role: "Admin" },
+      ...newReport,
+      cases: Number(newReport.cases),
+      createdAt: new Date().toISOString(),
+    };
+
+    setReports([...reports, reportToAdd]);
+    setShowModal(false);
+    setNewReport({
+      location: "",
+      disease: "",
+      cases: 0,
+      severity: "LOW",
+      reportDate: new Date().toISOString().split('T')[0],
+    });
   };
 
   const filteredReports = reports.slice(0, -6).filter(

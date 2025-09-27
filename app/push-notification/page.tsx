@@ -55,28 +55,17 @@ export default function PushNotificationPage() {
     }
 
     try {
-      const res = await fetch("/api/alerts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("jwt_token")}`,
-        },
-        body: JSON.stringify({
-          title: `Push Notification: ${disease} in ${area}`,
-          location: area,
-          severity: "MEDIUM", // You can change this to be dynamic
-          type: "DISEASE_OUTBREAK",
-          disease,
-          area,
-        }),
+      // Mock submission
+      console.log("Mock creating alert with data:", {
+        title: `Push Notification: ${disease} in ${area}`,
+        location: area,
+        severity: "MEDIUM",
+        type: "DISEASE_OUTBREAK",
+        disease,
+        area,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create alert");
-      }
-
-      alert(`✅ Notification set for ${disease} in ${area}.\nMessage: ${finalMessage}`);
+      alert(`✅ (Mock) Notification set for ${disease} in ${area}.\nMessage: ${finalMessage}`);
     } catch (error) {
       alert(`Failed to create alert: ${error.message}`);
     }

@@ -221,6 +221,25 @@ const Modal = ({ isOpen, onClose, data }) => {
   );
 };
 
+interface ForecastItem {
+  day: string;
+  date: string;
+  value: number;
+  trend: string;
+  icon: string;
+  high: number;
+  low: number;
+}
+
+interface DailyForecast {
+  pH?: ForecastItem;
+  Turbidity?: ForecastItem;
+  Temperature?: ForecastItem;
+  TDS?: ForecastItem;
+  "Water Level"?: ForecastItem;
+  "Dissolved Oxygen"?: ForecastItem;
+}
+
 // --- Corrected Main Component ---
 const WaterQualityForecastPage = () => {
   const today = new Date();
@@ -228,10 +247,10 @@ const WaterQualityForecastPage = () => {
   const [selectedDate, setSelectedDate] = useState(today);
   const [searchDateInput, setSearchDateInput] = useState(format(today, "yyyy-MM-dd"));
   const [selectedRegion, setSelectedRegion] = useState(regions[0]);
-  const [currentDayForecast, setCurrentDayForecast] = useState({});
-  const [sevenDayForecast, setSevenDayForecast] = useState({});
+  const [currentDayForecast, setCurrentDayForecast] = useState<DailyForecast>({});
+  const [sevenDayForecast, setSevenDayForecast] = useState<{ [key: string]: ForecastItem[] }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalData, setModalData] = useState(null);
+  const [modalData, setModalData] = useState<ForecastItem | null>(null);
 
   useEffect(() => {
     // Find the index of the selected date in our data

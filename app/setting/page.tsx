@@ -12,63 +12,24 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (token) {
-      // Fetch user data
-      const decodedToken = JSON.parse(atob(token.split('.')[1]));
-      setEmail(decodedToken.email || "");
-      // You might want to fetch the name from the database
-      // For now, we'll just use the name from the token if it exists
-      setName(decodedToken.name || "");
+      // Mock user data
+      setName("Mock User");
+      setEmail("mockuser@example.com");
     }
   }, [token]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const decodedToken = JSON.parse(atob(token.split('.')[1]));
-    try {
-      const res = await fetch(`/api/users/${decodedToken.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      alert("Profile updated successfully!");
-    } catch (error) {
-      alert(`Failed to update profile: ${error.message}`);
-    }
+    // Mock profile update
+    alert("Profile updated successfully! (Mock)");
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    try {
-      const res = await fetch("/api/auth/change-password", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("jwt_token")}`,
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to change password");
-      }
-
-      alert("Password changed successfully!");
-      setCurrentPassword("");
-      setNewPassword("");
-    } catch (error) {
-      alert(`Failed to change password: ${error.message}`);
-    }
+    // Mock password change
+    alert("Password changed successfully! (Mock)");
+    setCurrentPassword("");
+    setNewPassword("");
   };
 
   return (

@@ -49,23 +49,9 @@ export default function UploadData() {
             return;
           }
 
-          const response = await fetch('/api/reports', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-               // Assuming you have a way to get the token
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify(results.data),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to upload reports.');
-          }
-
-          const responseData = await response.json();
-          setStatus({ type: 'success', message: `${responseData.count || results.data.length} reports uploaded successfully!` });
+          // Mock upload
+          console.log("Mock uploading data:", results.data);
+          setStatus({ type: 'success', message: `${results.data.length} reports uploaded successfully! (Mock)` });
         } catch (error: any) {
           setStatus({ type: 'error', message: error.message || "An unknown error occurred." });
         } finally {

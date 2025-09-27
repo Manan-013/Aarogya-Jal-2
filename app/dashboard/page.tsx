@@ -2,10 +2,21 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  AlertData,
-  DeviceStatusData,
-} from "@/entities/all";
+interface AlertData {
+  id: string;
+  title: string;
+  location: any;
+  timestamp: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
+interface DeviceStatusData {
+  id: string;
+  device_id: string;
+  name: string;
+  location: any;
+  status: 'online' | 'offline' | 'maintenance';
+}
 import {
   Dialog,
   DialogContent,
