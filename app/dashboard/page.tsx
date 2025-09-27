@@ -488,7 +488,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Health Surveillance Dashboard
+            Health & Water Surveillance Dashboard
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Real-time monitoring of waterborne disease risks across communities
